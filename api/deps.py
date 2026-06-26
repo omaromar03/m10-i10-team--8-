@@ -1,11 +1,14 @@
 """FastAPI dependency-injection helpers.
 
-These functions resolve process-scoped resources (Neo4j driver, Weaviate
-client, spaCy pipeline, flan-t5-base generator, sentence-transformers
-embedder) that were constructed once in `main.lifespan` and stored on
-`app.state`.
+These functions resolve process-scoped resources from `app.state`.
+
+Neo4j driver, Weaviate client, and spaCy are initialized in `main.lifespan`.
+Heavy ML models are lazy-loaded on first use so the API can finish startup.
 """
 from fastapi import Request
+
+from .m8_rag import load_generator
+from sentence_transformers import SentenceTransformer
 
 
 async def get_session(request: Request):
@@ -21,7 +24,9 @@ def get_weaviate(request: Request):
 
 
 def get_generator(request: Request):
-    """Return the process-scoped flan-t5-base generator."""
+    """Lazy-load and return the flan-t5-base generator."""
+    if request.app.state.generator is None:
+        request.app.state.generator = load_generator()
     return request.app.state.generator
 
 
@@ -31,11 +36,9 @@ def get_nlp(request: Request):
 
 
 def get_embedder(request: Request):
-    """Return the process-scoped sentence-transformers embedder.
-
-    `/rag/answer` uses this to encode the query into the same vector
-    space as the chunks seeded by `seed_weaviate.py`, so
-    `with_near_vector` returns meaningful results against a
-    `vectorizer=none` Weaviate class.
-    """
+    """Lazy-load and return the sentence-transformers embedder."""
+    if request.app.state.embedder is None:
+        request.app.state.embedder = SentenceTransformer(
+            "sentence-transformers/all-MiniLM-L6-v2"
+        )
     return request.app.state.embedder
