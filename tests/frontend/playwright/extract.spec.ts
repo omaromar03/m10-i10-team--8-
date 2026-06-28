@@ -1,8 +1,15 @@
-// Frontend lead — author this Playwright smoke test.
-// Verifies the /extract page renders, accepts input, and displays
-// typed entity results from the api service.
 import { test, expect } from '@playwright/test';
 
-test.skip('extract page renders and returns entities', async ({ page }) => {
-  // TODO (Frontend lead): implement against the running stack.
+test('extract page renders and returns entities', async ({ page }) => {
+  await page.goto('/extract');
+
+  await page.getByRole('textbox').fill(
+    'Mince ginger and garlic before stir-frying tofu with soy sauce.'
+  );
+
+  await page.getByRole('button', { name: /extract entities/i }).click();
+
+  await expect(page.getByTestId('entity-span').first()).toBeVisible();
+  await expect(page.getByText(/ginger/i)).toBeVisible();
+  await expect(page.getByText(/INGREDIENT/i)).toBeVisible();
 });
